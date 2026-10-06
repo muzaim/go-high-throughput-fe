@@ -12,7 +12,13 @@ interface UseInventoryReturn {
   lastUpdated: Date | null;
   refetchStock: () => Promise<void>;
   clearError: () => void;
+  broadcastStockUpdate: (updatedStock: StockResponse) => void;
 }
+
+// Global BroadcastChannel for instant multi-tab real-time synchronization
+const stockChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
+  ? new BroadcastChannel('surya_store_stock_sync')
+  : null;
 
 export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventoryReturn {
   const [stock, setStock] = useState<StockResponse | null>(null);
@@ -42,6 +48,11 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
           setStock(data);
           setLastUpdated(new Date());
           setError(null);
+
+          // Broadcast to other tabs
+          if (stockChannel) {
+            stockChannel.postMessage({ type: 'STOCK_UPDATE', payload: data });
+          }
         }
       } catch (err) {
         if (isMountedRef.current) {
@@ -67,6 +78,16 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
     await fetchStock(true);
   }, [fetchStock]);
 
+  const broadcastStockUpdate = useCallback((updatedStock: StockResponse) => {
+    if (isMountedRef.current) {
+      setStock(updatedStock);
+      setLastUpdated(new Date());
+    }
+    if (stockChannel) {
+      stockChannel.postMessage({ type: 'STOCK_UPDATE', payload: updatedStock });
+    }
+  }, []);
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -79,6 +100,29 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
     };
   }, []);
 
+  // Listen to BroadcastChannel for instant multi-tab / multi-window synchronization
+  useEffect(() => {
+    if (!stockChannel || !itemId.trim()) return;
+
+    const handleChannelMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'STOCK_UPDATE') {
+        const payload: StockResponse = event.data.payload;
+        if (payload && payload.item_id === itemId) {
+          if (isMountedRef.current) {
+            setStock(payload);
+            setLastUpdated(new Date());
+          }
+        }
+      }
+    };
+
+    stockChannel.addEventListener('message', handleChannelMessage);
+
+    return () => {
+      stockChannel.removeEventListener('message', handleChannelMessage);
+    };
+  }, [itemId]);
+
   // Initial HTTP Fetch on itemId change
   useEffect(() => {
     setStock(null);
@@ -86,7 +130,7 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
     fetchStock(false);
   }, [itemId, fetchStock]);
 
-  // Real-time WebSocket listener
+  // Real-time WebSocket listener (for backend WebSocket server broadcast)
   useEffect(() => {
     if (!itemId.trim()) return;
 
@@ -121,6 +165,11 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
                 available_stock: stockData.available_stock ?? prev?.available_stock ?? 0,
               }));
               setLastUpdated(new Date());
+            }
+
+            // Sync with other browser tabs
+            if (stockChannel) {
+              stockChannel.postMessage({ type: 'STOCK_UPDATE', payload: stockData });
             }
           }
         } catch {
@@ -176,5 +225,6 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
     lastUpdated,
     refetchStock,
     clearError,
+    broadcastStockUpdate,
   };
 }
