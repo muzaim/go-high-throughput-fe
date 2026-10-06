@@ -15,6 +15,11 @@ interface UseInventoryReturn {
   clearError: () => void;
 }
 
+// Global BroadcastChannel for instant multi-tab real-time synchronization
+const stockChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
+  ? new BroadcastChannel('surya_store_sse_sync')
+  : null;
+
 export function useInventory(itemId: string): UseInventoryReturn {
   const [stock, setStock] = useState<StockResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -65,7 +70,11 @@ export function useInventory(itemId: string): UseInventoryReturn {
 
   const refetchStock = useCallback(async () => {
     await fetchStock(true);
-  }, [fetchStock]);
+    // Broadcast refetch event to other tabs on the same origin
+    if (stockChannel) {
+      stockChannel.postMessage({ type: 'REFETCH_STOCK', itemId: itemId.trim() });
+    }
+  }, [fetchStock, itemId]);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -79,6 +88,23 @@ export function useInventory(itemId: string): UseInventoryReturn {
     };
   }, []);
 
+  // Listen to BroadcastChannel for multi-tab synchronization
+  useEffect(() => {
+    if (!stockChannel || !itemId.trim()) return;
+
+    const handleChannelMessage = (event: MessageEvent) => {
+      if (event.data?.itemId === itemId.trim()) {
+        fetchStock(false);
+      }
+    };
+
+    stockChannel.addEventListener('message', handleChannelMessage);
+
+    return () => {
+      stockChannel.removeEventListener('message', handleChannelMessage);
+    };
+  }, [itemId, fetchStock]);
+
   // Initial HTTP stock fetch when itemId changes
   useEffect(() => {
     setStock(null);
@@ -88,9 +114,17 @@ export function useInventory(itemId: string): UseInventoryReturn {
 
   // Connect native EventSource SSE stream.
   // When 'inventory_updated' event is received, fetchStock() is invoked to query PostgreSQL source-of-truth.
+  const handleInventoryUpdated = useCallback(() => {
+    fetchStock(false);
+    // Notify other browser tabs
+    if (stockChannel) {
+      stockChannel.postMessage({ type: 'REFETCH_STOCK', itemId: itemId.trim() });
+    }
+  }, [fetchStock, itemId]);
+
   const { status: sseStatus } = useInventoryStream({
     itemId,
-    onInventoryUpdated: () => fetchStock(false),
+    onInventoryUpdated: handleInventoryUpdated,
   });
 
   return {
