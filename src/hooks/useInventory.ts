@@ -15,12 +15,12 @@ interface UseInventoryReturn {
   clearError: () => void;
 }
 
-// Global BroadcastChannel for instant multi-tab real-time synchronization
+// Global BroadcastChannel for instant multi-tab synchronization
 const stockChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
   ? new BroadcastChannel('surya_store_sse_sync')
   : null;
 
-export function useInventory(itemId: string): UseInventoryReturn {
+export function useInventory(itemId: string, fallbackPollIntervalMs = 4000): UseInventoryReturn {
   const [stock, setStock] = useState<StockResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -70,7 +70,6 @@ export function useInventory(itemId: string): UseInventoryReturn {
 
   const refetchStock = useCallback(async () => {
     await fetchStock(true);
-    // Broadcast refetch event to other tabs on the same origin
     if (stockChannel) {
       stockChannel.postMessage({ type: 'REFETCH_STOCK', itemId: itemId.trim() });
     }
@@ -112,20 +111,43 @@ export function useInventory(itemId: string): UseInventoryReturn {
     fetchStock(false);
   }, [itemId, fetchStock]);
 
-  // Connect native EventSource SSE stream.
-  // When 'inventory_updated' event is received, fetchStock() is invoked to query PostgreSQL source-of-truth.
   const handleInventoryUpdated = useCallback(() => {
     fetchStock(false);
-    // Notify other browser tabs
     if (stockChannel) {
       stockChannel.postMessage({ type: 'REFETCH_STOCK', itemId: itemId.trim() });
     }
   }, [fetchStock, itemId]);
 
+  // Native EventSource SSE Stream Hook
   const { status: sseStatus } = useInventoryStream({
     itemId,
     onInventoryUpdated: handleInventoryUpdated,
   });
+
+  // SMART FALLBACK POLLING:
+  // - If SSE is 'connected' (Live): Periodic HTTP polling is DISABLED (0 reqs).
+  // - If SSE is 'connecting' or 'disconnected': Silent background polling activates automatically (every 4s)
+  //   so stock updates NEVER stop working even if SSE stream drops!
+  useEffect(() => {
+    if (sseStatus === 'connected' || fallbackPollIntervalMs <= 0) return;
+
+    const intervalId = setInterval(() => {
+      if (isMountedRef.current) {
+        fetchStock(false);
+      }
+    }, fallbackPollIntervalMs);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [itemId, sseStatus, fallbackPollIntervalMs, fetchStock]);
+
+  // When SSE transitions to 'connected', instantly trigger one fresh stock refetch
+  useEffect(() => {
+    if (sseStatus === 'connected') {
+      fetchStock(false);
+    }
+  }, [sseStatus, fetchStock]);
 
   return {
     stock,
