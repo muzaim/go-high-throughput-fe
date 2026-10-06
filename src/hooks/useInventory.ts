@@ -24,28 +24,24 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
 
   const isMountedRef = useRef(true);
   const stockRef = useRef<StockResponse | null>(null);
-
-  useEffect(() => {
-    stockRef.current = stock;
-  }, [stock]);
+  stockRef.current = stock;
 
   const fetchStock = useCallback(
-    async (isManualRefresh = false) => {
+    async (isManual = false) => {
       if (!itemId.trim()) return;
 
-      if (isManualRefresh) {
+      if (isManual) {
         setIsRefreshing(true);
       } else if (!stockRef.current) {
         setIsLoading(true);
       }
-
-      setError(null);
 
       try {
         const data = await inventoryApi.getStock(itemId);
         if (isMountedRef.current) {
           setStock(data);
           setLastUpdated(new Date());
+          setError(null);
         }
       } catch (err) {
         if (isMountedRef.current) {
@@ -83,15 +79,20 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
     };
   }, []);
 
-  // Real-time WebSocket connection to /stock with automatic fallback
+  // Initial HTTP Fetch on itemId change
+  useEffect(() => {
+    setStock(null);
+    setIsLoading(true);
+    fetchStock(false);
+  }, [itemId, fetchStock]);
+
+  // Real-time WebSocket listener
   useEffect(() => {
     if (!itemId.trim()) return;
 
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
     const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
     const cleanHost = baseUrl.replace(/^https?:\/\//, '');
-
-    // Try WebSocket endpoints (/api/v1/inventory/stock or /stock)
     const wsUrl = `${wsProtocol}://${cleanHost}/api/v1/inventory/stock?item_id=${encodeURIComponent(itemId)}`;
 
     let socket: WebSocket | null = null;
@@ -108,7 +109,6 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
       socket.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
-          // Handle both direct stock objects and wrapped event payloads
           const stockData = payload.data || payload;
 
           if (stockData && (stockData.item_id === itemId || stockData.available_stock !== undefined)) {
@@ -123,8 +123,8 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
               setLastUpdated(new Date());
             }
           }
-        } catch (e) {
-          console.warn('[Realtime Stock] Non-JSON payload received:', event.data);
+        } catch {
+          // Ignore non-json
         }
       };
 
@@ -140,7 +140,9 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
         }
       };
     } catch {
-      setIsRealtimeConnected(false);
+      if (isMountedRef.current) {
+        setIsRealtimeConnected(false);
+      }
     }
 
     return () => {
@@ -150,14 +152,9 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
     };
   }, [itemId]);
 
-  // Initial fetch and background polling interval fallback
+  // Background Polling Fallback (ONLY active when WebSocket is NOT connected)
   useEffect(() => {
-    setStock(null);
-    setIsLoading(true);
-
-    fetchStock(false);
-
-    if (pollIntervalMs <= 0) return;
+    if (isRealtimeConnected || pollIntervalMs <= 0) return;
 
     const intervalId = setInterval(() => {
       if (isMountedRef.current) {
@@ -168,7 +165,7 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
     return () => {
       clearInterval(intervalId);
     };
-  }, [itemId, pollIntervalMs, fetchStock]);
+  }, [itemId, isRealtimeConnected, pollIntervalMs, fetchStock]);
 
   return {
     stock,
