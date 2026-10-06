@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { useInventory } from '../hooks/useInventory';
 import { ReservationForm } from '../components/ReservationForm';
 import { ActiveReservation } from '../components/ActiveReservation';
-import { AlertMessage } from '../components/AlertMessage';
 import { getItemImageUrl } from '../utils/itemImages';
 import { ReserveResponse, ConfirmResponse } from '../types/inventory';
 
@@ -46,6 +45,42 @@ export const ItemDetailPage: React.FC = () => {
 
   const imageUrl = getItemImageUrl(itemId, stock?.name);
 
+  // Early return for Item Not Found / Fetch Error state
+  if (error && !isLoading) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        <div>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-brand-primary transition-colors py-1.5 px-3 bg-white border border-gray-200 rounded-md shadow-sm"
+          >
+            ← Back to Catalog
+          </Link>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-10 text-center space-y-4 shadow-sm">
+          <div className="w-12 h-12 bg-red-50 text-brand-primary border border-red-100 rounded-full flex items-center justify-center mx-auto text-lg font-bold">
+            !
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold text-gray-900 tracking-tight">Item Not Found</h2>
+            <p className="text-sm text-gray-500 max-w-md mx-auto">
+              The requested item <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-800 font-semibold">{itemId}</span> does not exist or could not be retrieved from inventory.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link
+              to="/"
+              className="inline-flex items-center px-4 py-2 bg-gray-900 hover:bg-brand-primary text-white text-xs font-semibold rounded shadow-sm transition-colors"
+            >
+              Return to Catalog
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       {/* Top navigation */}
@@ -57,8 +92,6 @@ export const ItemDetailPage: React.FC = () => {
           ← Back to Catalog
         </Link>
       </div>
-
-      {error && <AlertMessage error={error} />}
 
       {/* Main 2-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
