@@ -1,30 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { inventoryApi } from '../services/inventoryApi';
-import { StockResponse } from '../types/inventory';
+import { StockResponse, SseStatus } from '../types/inventory';
 import { ApiError } from '../services/api';
+import { useInventoryStream } from './useInventoryStream';
 
 interface UseInventoryReturn {
   stock: StockResponse | null;
   isLoading: boolean;
   isRefreshing: boolean;
-  isRealtimeConnected: boolean;
+  sseStatus: SseStatus;
   error: ApiError | null;
   lastUpdated: Date | null;
   refetchStock: () => Promise<void>;
   clearError: () => void;
-  broadcastStockUpdate: (updatedStock: StockResponse) => void;
 }
 
-// Global BroadcastChannel for instant multi-tab real-time synchronization
-const stockChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
-  ? new BroadcastChannel('surya_store_stock_sync')
-  : null;
-
-export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventoryReturn {
+export function useInventory(itemId: string): UseInventoryReturn {
   const [stock, setStock] = useState<StockResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [isRealtimeConnected, setIsRealtimeConnected] = useState<boolean>(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -48,11 +42,6 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
           setStock(data);
           setLastUpdated(new Date());
           setError(null);
-
-          // Broadcast to other tabs
-          if (stockChannel) {
-            stockChannel.postMessage({ type: 'STOCK_UPDATE', payload: data });
-          }
         }
       } catch (err) {
         if (isMountedRef.current) {
@@ -78,21 +67,11 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
     await fetchStock(true);
   }, [fetchStock]);
 
-  const broadcastStockUpdate = useCallback((updatedStock: StockResponse) => {
-    if (isMountedRef.current) {
-      setStock(updatedStock);
-      setLastUpdated(new Date());
-    }
-    if (stockChannel) {
-      stockChannel.postMessage({ type: 'STOCK_UPDATE', payload: updatedStock });
-    }
-  }, []);
-
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  // Track mounted state
+  // Track component mounted state
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -100,131 +79,28 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
     };
   }, []);
 
-  // Listen to BroadcastChannel for instant multi-tab / multi-window synchronization
-  useEffect(() => {
-    if (!stockChannel || !itemId.trim()) return;
-
-    const handleChannelMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'STOCK_UPDATE') {
-        const payload: StockResponse = event.data.payload;
-        if (payload && payload.item_id === itemId) {
-          if (isMountedRef.current) {
-            setStock(payload);
-            setLastUpdated(new Date());
-          }
-        }
-      }
-    };
-
-    stockChannel.addEventListener('message', handleChannelMessage);
-
-    return () => {
-      stockChannel.removeEventListener('message', handleChannelMessage);
-    };
-  }, [itemId]);
-
-  // Initial HTTP Fetch on itemId change
+  // Initial HTTP stock fetch when itemId changes
   useEffect(() => {
     setStock(null);
     setIsLoading(true);
     fetchStock(false);
   }, [itemId, fetchStock]);
 
-  // Real-time WebSocket listener (for backend WebSocket server broadcast)
-  useEffect(() => {
-    if (!itemId.trim()) return;
-
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-    const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
-    const cleanHost = baseUrl.replace(/^https?:\/\//, '');
-    const wsUrl = `${wsProtocol}://${cleanHost}/api/v1/inventory/stock?item_id=${encodeURIComponent(itemId)}`;
-
-    let socket: WebSocket | null = null;
-
-    try {
-      socket = new WebSocket(wsUrl);
-
-      socket.onopen = () => {
-        if (isMountedRef.current) {
-          setIsRealtimeConnected(true);
-        }
-      };
-
-      socket.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          const stockData = payload.data || payload;
-
-          if (stockData && (stockData.item_id === itemId || stockData.available_stock !== undefined)) {
-            if (isMountedRef.current) {
-              setStock((prev) => ({
-                item_id: stockData.item_id || itemId,
-                name: stockData.name || prev?.name,
-                total_stock: stockData.total_stock ?? prev?.total_stock ?? 0,
-                reserved_stock: stockData.reserved_stock ?? prev?.reserved_stock ?? 0,
-                available_stock: stockData.available_stock ?? prev?.available_stock ?? 0,
-              }));
-              setLastUpdated(new Date());
-            }
-
-            // Sync with other browser tabs
-            if (stockChannel) {
-              stockChannel.postMessage({ type: 'STOCK_UPDATE', payload: stockData });
-            }
-          }
-        } catch {
-          // Ignore non-json
-        }
-      };
-
-      socket.onerror = () => {
-        if (isMountedRef.current) {
-          setIsRealtimeConnected(false);
-        }
-      };
-
-      socket.onclose = () => {
-        if (isMountedRef.current) {
-          setIsRealtimeConnected(false);
-        }
-      };
-    } catch {
-      if (isMountedRef.current) {
-        setIsRealtimeConnected(false);
-      }
-    }
-
-    return () => {
-      if (socket) {
-        socket.close();
-      }
-    };
-  }, [itemId]);
-
-  // Background Polling Fallback (ONLY active when WebSocket is NOT connected)
-  useEffect(() => {
-    if (isRealtimeConnected || pollIntervalMs <= 0) return;
-
-    const intervalId = setInterval(() => {
-      if (isMountedRef.current) {
-        fetchStock(false);
-      }
-    }, pollIntervalMs);
-
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [itemId, isRealtimeConnected, pollIntervalMs, fetchStock]);
+  // Connect native EventSource SSE stream.
+  // When 'inventory_updated' event is received, fetchStock() is invoked to query PostgreSQL source-of-truth.
+  const { status: sseStatus } = useInventoryStream({
+    itemId,
+    onInventoryUpdated: () => fetchStock(false),
+  });
 
   return {
     stock,
     isLoading,
     isRefreshing,
-    isRealtimeConnected,
+    sseStatus,
     error,
     lastUpdated,
     refetchStock,
     clearError,
-    broadcastStockUpdate,
   };
 }

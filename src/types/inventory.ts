@@ -44,8 +44,8 @@ export interface APIErrorResponse {
 
 export type ReservationStatus = 'active' | 'expired' | 'confirmed';
 
-export interface ActiveReservationState {
-  reservation: ReserveResponse;
-  status: ReservationStatus;
-  confirmedAt?: string;
+export type SseStatus = 'connecting' | 'connected' | 'disconnected';
+
+export interface SseInventoryEventPayload {
+  item_id: string;
 }

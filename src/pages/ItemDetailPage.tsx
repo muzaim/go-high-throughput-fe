@@ -12,17 +12,15 @@ export const ItemDetailPage: React.FC = () => {
   const [activeReservation, setActiveReservation] = useState<ReserveResponse | null>(null);
   const [confirmedData, setConfirmedData] = useState<ConfirmResponse | null>(null);
 
-  // Background polling (5s) is active when WebSocket is not connected,
-  // ensuring browser 2 always receives stock updates automatically.
   const {
     stock,
     isLoading,
     isRefreshing,
-    isRealtimeConnected,
+    sseStatus,
     error,
     lastUpdated,
     refetchStock,
-  } = useInventory(itemId, 5000);
+  } = useInventory(itemId);
 
   const handleReservationSuccess = useCallback((reservation: ReserveResponse) => {
     setActiveReservation(reservation);
@@ -111,7 +109,7 @@ export const ItemDetailPage: React.FC = () => {
 
         {/* Right Column: Top Stock Info Card + Bottom Reservation Form Card */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Card Kanan Atas: Informasi Stock, Reserved, Available + Icon Refresh & Timestamp */}
+          {/* Card Kanan Atas: Informasi Stock, Reserved, Available + Subtle SSE Live Indicator & Icon Refresh */}
           <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <h1 className="text-xl font-bold text-gray-900 tracking-tight">
@@ -119,12 +117,25 @@ export const ItemDetailPage: React.FC = () => {
               </h1>
 
               <div className="flex items-center gap-2">
-                {isRealtimeConnected && (
+                {/* Subtle SSE Connection Status Indicator */}
+                {sseStatus === 'connected' && (
                   <span className="flex items-center gap-1 text-[11px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    LIVE
+                    Live
                   </span>
                 )}
+                {sseStatus === 'connecting' && (
+                  <span className="flex items-center gap-1 text-[11px] font-mono text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    Connecting...
+                  </span>
+                )}
+                {sseStatus === 'disconnected' && (
+                  <span className="flex items-center gap-1 text-[11px] font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                    Reconnecting...
+                  </span>
+                )}
+
                 {lastUpdated && (
                   <span className="text-[11px] font-mono text-gray-400" title="Last updated time">
                     {lastUpdated.toLocaleTimeString()}
