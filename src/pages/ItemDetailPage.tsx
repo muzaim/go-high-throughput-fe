@@ -16,10 +16,11 @@ export const ItemDetailPage: React.FC = () => {
     stock,
     isLoading,
     isRefreshing,
+    isRealtimeConnected,
     error,
     lastUpdated,
     refetchStock,
-  } = useInventory(itemId, 8000);
+  } = useInventory(itemId, 5000);
 
   const handleReservationSuccess = useCallback((reservation: ReserveResponse) => {
     setActiveReservation(reservation);
@@ -116,6 +117,12 @@ export const ItemDetailPage: React.FC = () => {
               </h1>
 
               <div className="flex items-center gap-2">
+                {isRealtimeConnected && (
+                  <span className="flex items-center gap-1 text-[11px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    LIVE
+                  </span>
+                )}
                 {lastUpdated && (
                   <span className="text-[11px] font-mono text-gray-400" title="Last updated time">
                     {lastUpdated.toLocaleTimeString()}
