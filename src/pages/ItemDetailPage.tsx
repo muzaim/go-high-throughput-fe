@@ -12,8 +12,8 @@ export const ItemDetailPage: React.FC = () => {
   const [activeReservation, setActiveReservation] = useState<ReserveResponse | null>(null);
   const [confirmedData, setConfirmedData] = useState<ConfirmResponse | null>(null);
 
-  // Set pollIntervalMs to 0 so there are NO periodic HTTP background fetches.
-  // Updates rely purely on real-time triggers (WebSocket / BroadcastChannel / actions).
+  // Background polling (5s) is active when WebSocket is not connected,
+  // ensuring browser 2 always receives stock updates automatically.
   const {
     stock,
     isLoading,
@@ -22,7 +22,7 @@ export const ItemDetailPage: React.FC = () => {
     error,
     lastUpdated,
     refetchStock,
-  } = useInventory(itemId, 0);
+  } = useInventory(itemId, 5000);
 
   const handleReservationSuccess = useCallback((reservation: ReserveResponse) => {
     setActiveReservation(reservation);
