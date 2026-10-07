@@ -21,7 +21,6 @@ export function useCountdown({
   const [isExpired, setIsExpired] = useState<boolean>(false);
   const onExpireRef = useRef(onExpire);
 
-  // Keep latest onExpire ref without triggering interval re-creation
   useEffect(() => {
     onExpireRef.current = onExpire;
   }, [onExpire]);
@@ -44,7 +43,6 @@ export function useCountdown({
       return;
     }
 
-    // Initial sync
     const initialRemaining = calculateRemaining();
     setRemainingSeconds(initialRemaining);
 
@@ -58,7 +56,6 @@ export function useCountdown({
 
     setIsExpired(false);
 
-    // Setup 1-second interval based on Date.now() diff
     const intervalId = setInterval(() => {
       const secondsLeft = calculateRemaining();
       setRemainingSeconds(secondsLeft);
@@ -72,7 +69,6 @@ export function useCountdown({
       }
     }, 1000);
 
-    // Cleanup interval on unmount, expire, confirm, or expiresAt change
     return () => {
       clearInterval(intervalId);
     };

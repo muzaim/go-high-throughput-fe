@@ -47,9 +47,7 @@ export async function fetchApi<T>(
 			let errorData: APIErrorResponse | null = null;
 			try {
 				errorData = await response.json();
-			} catch {
-				// Fallback if response body is not valid JSON
-			}
+			} catch {}
 
 			const errorMessage =
 				errorData?.message || `HTTP error! status: ${response.status}`;

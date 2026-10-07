@@ -1,12 +1,12 @@
 const ITEM_IMAGE_MAP: Record<string, string> = {
-  item_4021: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80', // iPhone 18 Pro Max
-  item_4022: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80', // MacBook Pro M4 Max
-  item_4023: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?auto=format&fit=crop&w=800&q=80', // iPad Pro OLED
-  item_4024: 'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=800&q=80', // Apple Watch Ultra 3
-  item_4025: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=800&q=80', // AirPods Max 2
-  item_4026: 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?auto=format&fit=crop&w=800&q=80', // PlayStation 5 Pro
-  item_4027: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80', // LG UltraGear OLED Monitor
-  item_4028: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=800&q=80', // Custom Mechanical Keyboard
+  item_4021: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80',
+  item_4022: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80',
+  item_4023: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?auto=format&fit=crop&w=800&q=80',
+  item_4024: 'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=800&q=80',
+  item_4025: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=800&q=80',
+  item_4026: 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?auto=format&fit=crop&w=800&q=80',
+  item_4027: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80',
+  item_4028: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=800&q=80',
 };
 
 const FALLBACK_IMAGES = [
@@ -48,7 +48,6 @@ export function getItemImageUrl(itemId: string, name?: string): string {
     }
   }
 
-  // Pick deterministic fallback based on char code sum
   const charSum = itemId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return FALLBACK_IMAGES[charSum % FALLBACK_IMAGES.length];
 }

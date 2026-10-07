@@ -55,7 +55,6 @@ export const ActiveReservation: React.FC<ActiveReservationProps> = ({
     }
   };
 
-  // 1. Confirmed Purchase State
   if (isConfirmed && confirmedData) {
     return (
       <section className="bg-emerald-50 border border-emerald-200 rounded-lg p-5 shadow-sm space-y-4">
@@ -99,7 +98,6 @@ export const ActiveReservation: React.FC<ActiveReservationProps> = ({
     );
   }
 
-  // 2. Active / Expired State
   return (
     <section
       className={`rounded-lg border p-5 shadow-sm space-y-4 transition-colors ${

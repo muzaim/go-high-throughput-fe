@@ -69,7 +69,6 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
     setError(null);
   }, []);
 
-  // Track component mounted state
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -77,14 +76,12 @@ export function useInventory(itemId: string, pollIntervalMs = 5000): UseInventor
     };
   }, []);
 
-  // Initial HTTP stock fetch when itemId changes
   useEffect(() => {
     setStock(null);
     setIsLoading(true);
     fetchStock(false);
   }, [itemId, fetchStock]);
 
-  // Automated background polling fallback (e.g. 5 seconds)
   useEffect(() => {
     if (pollIntervalMs <= 0) return;
 

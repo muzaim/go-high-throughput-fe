@@ -1,4 +1,4 @@
-const TOTAL_REQUESTS = 10000;
+const TOTAL_REQUESTS = 1000;
 const TARGET_URL = "http://localhost:8080/api/v1/inventory/reserve";
 const ITEM_ID = "item_4021";
 

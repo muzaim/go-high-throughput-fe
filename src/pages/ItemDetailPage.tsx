@@ -17,7 +17,6 @@ export const ItemDetailPage: React.FC = () => {
     isLoading,
     isRefreshing,
     error,
-    lastUpdated,
     refetchStock,
   } = useInventory(itemId, 5000);
 
@@ -45,7 +44,6 @@ export const ItemDetailPage: React.FC = () => {
 
   const imageUrl = getItemImageUrl(itemId, stock?.name);
 
-  // Early return for Item Not Found / Fetch Error state
   if (error && !isLoading) {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -83,7 +81,6 @@ export const ItemDetailPage: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-      {/* Top navigation */}
       <div>
         <Link
           to="/"
@@ -93,9 +90,7 @@ export const ItemDetailPage: React.FC = () => {
         </Link>
       </div>
 
-      {/* Main 2-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Product Image */}
         <div className="lg:col-span-5 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm p-3">
           <div className="relative aspect-square w-full rounded-md overflow-hidden bg-gray-100">
             <img
@@ -106,9 +101,7 @@ export const ItemDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: Top Stock Info Card + Bottom Reservation Form Card */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Card Kanan Atas: Informasi Stock, Reserved, Available + Manual Refresh & Timestamp */}
           <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <h1 className="text-xl font-bold text-gray-900 tracking-tight">
@@ -116,11 +109,6 @@ export const ItemDetailPage: React.FC = () => {
               </h1>
 
               <div className="flex items-center gap-2">
-                {lastUpdated && (
-                  <span className="text-[11px] font-mono text-gray-400" title="Last updated time">
-                    {lastUpdated.toLocaleTimeString()}
-                  </span>
-                )}
                 <button
                   type="button"
                   onClick={() => refetchStock()}
@@ -146,7 +134,6 @@ export const ItemDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Compact Stock Stats Grid */}
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-slate-50 border border-slate-200/80 rounded-md p-3 text-center">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
@@ -177,7 +164,6 @@ export const ItemDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Active Reservation Section (if active or confirmed) */}
           {(activeReservation || confirmedData) && (
             <ActiveReservation
               reservation={activeReservation!}
@@ -188,7 +174,6 @@ export const ItemDetailPage: React.FC = () => {
             />
           )}
 
-          {/* Card Kanan Bawah: Process Submit Form */}
           <ReservationForm
             currentItemId={itemId}
             onReservationSuccess={handleReservationSuccess}

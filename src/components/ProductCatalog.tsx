@@ -22,7 +22,6 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
 }) => {
   return (
     <div className="space-y-6">
-      {/* Header section */}
       <div className="flex items-center justify-between pb-3 border-b border-gray-200">
         <div>
           <h2 className="text-xl font-bold text-gray-900 tracking-tight">Flash Sale Products</h2>
@@ -81,7 +80,6 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                 key={item.item_id}
                 className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between group"
               >
-                {/* Image without item_id overlay */}
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
                   <img
                     src={imageUrl}
@@ -90,7 +88,6 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                   />
                 </div>
 
-                {/* Body & Action */}
                 <div className="p-5 flex flex-col justify-between flex-grow space-y-4">
                   <h3 className="font-semibold text-gray-900 text-base leading-snug tracking-tight">
                     {item.name || `Item ${item.item_id}`}

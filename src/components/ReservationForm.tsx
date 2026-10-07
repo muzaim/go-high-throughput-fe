@@ -26,7 +26,6 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
     setError(null);
     setValidationError(null);
 
-    // Client-side validations
     if (!userId.trim()) {
       setValidationError('User ID is required.');
       return;
